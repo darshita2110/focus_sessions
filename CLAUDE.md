@@ -50,6 +50,7 @@ docs/PROMPT_LOG.md          Record of work done with Claude
   `/api/today` endpoint.
 - Quote requests need a timeout. If a request fails, use the last cached quote,
   then a built-in fallback quote.
+- Session times are stored in UTC. Convert with `.toLocal()` before showing dates or grouping by day.
 
 ## Approved packages
 
