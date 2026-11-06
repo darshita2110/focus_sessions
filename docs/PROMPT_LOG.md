@@ -47,3 +47,12 @@
   - **Dead code:** The negative check in _clampDuration could never run because _tick finishes the session first, so I removed it.
 - **Result:** flutter analyze: No issues found! (ran in 4.3s). flutter test: All tests passed!.
 - **Commit:** Add focus timer logic with a note step before saving
+
+
+## 5. Home screen
+- **Tool:** Claude Code for the code, Claude chat for review
+- **Asked:** Asked Claude to connect the timer to a home screen with idle, running, and note states, without building History or the quote.
+- **Claude produced:** main.dart setup, a state-driven HomeScreen, rounded-up countdown seconds, and widget and unit tests.
+- **What I did:** Accepted it. I kept the catch-all error handling on Save, because the user sees a retry message instead of a crash, although this can hide the exact cause of a bug.
+- **Verified:** flutter analyze: No issues found! (ran in 4.4s). flutter test: All tests passed!. Emulator: [what you tested and what happened].
+- **Commit:** Connect timer to home screen so sessions can be run and saved

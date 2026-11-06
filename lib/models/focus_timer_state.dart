@@ -39,6 +39,12 @@ class TimerRunning extends FocusTimerState {
 
   final Duration remaining;
 
+  /// Whole seconds left, rounded up, so a countdown starts at the full
+  /// length and never shows zero while time remains.
+  int get remainingSeconds =>
+      (remaining.inMicroseconds + Duration.microsecondsPerSecond - 1) ~/
+      Duration.microsecondsPerSecond;
+
   @override
   bool operator ==(Object other) =>
       other is TimerRunning &&
