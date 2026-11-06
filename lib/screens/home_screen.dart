@@ -4,6 +4,7 @@ import 'package:focus_sessions/models/focus_timer_state.dart';
 import 'package:focus_sessions/models/session.dart';
 import 'package:focus_sessions/providers/focus_timer_provider.dart';
 import 'package:focus_sessions/screens/history_screen.dart';
+import 'package:focus_sessions/widgets/daily_quote.dart';
 
 /// Shows whichever step the timer is in.
 ///
@@ -30,7 +31,8 @@ class HomeScreen extends ConsumerWidget {
         ],
       ),
       body: Center(
-        child: Padding(
+        // Scrolls so a long quote cannot overflow a small screen.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: switch (state) {
             TimerIdle() => const _LengthPicker(),
@@ -65,6 +67,8 @@ class _LengthPicker extends ConsumerWidget {
               child: Text('${length.minutes} min'),
             ),
           ),
+        const SizedBox(height: 24),
+        const DailyQuote(),
       ],
     );
   }
@@ -89,6 +93,8 @@ class _Countdown extends ConsumerWidget {
           onPressed: () => ref.read(focusTimerProvider.notifier).end(),
           child: const Text('End Session'),
         ),
+        const SizedBox(height: 24),
+        const DailyQuote(),
       ],
     );
   }

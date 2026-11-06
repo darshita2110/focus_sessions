@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focus_sessions/data/session_repository.dart';
+import 'package:focus_sessions/models/quote.dart';
 import 'package:focus_sessions/models/session.dart';
 import 'package:focus_sessions/providers/core_providers.dart';
+import 'package:focus_sessions/providers/daily_quote_provider.dart';
 import 'package:focus_sessions/screens/history_screen.dart';
 import 'package:focus_sessions/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +33,15 @@ class _FakeRepository extends SessionRepository {
     if (failDelete) return Future.error(Exception('Delete failed'));
     return super.deleteSession(startTime);
   }
+}
+
+/// Keeps these tests away from quote fetching, which has its own tests.
+class _StubDailyQuote extends DailyQuoteNotifier {
+  @override
+  Future<QuoteResult> build() async => const QuoteResult(
+        quote: Quote(text: 'Stub quote', author: 'Stub author'),
+        source: QuoteSource.fresh,
+      );
 }
 
 void main() {
@@ -70,6 +81,7 @@ void main() {
           clockProvider.overrideWithValue(() => now),
           tickerProvider.overrideWithValue(() => ticks.stream),
           sessionRepositoryProvider.overrideWithValue(repository),
+          dailyQuoteProvider.overrideWith(_StubDailyQuote.new),
         ],
         child: MaterialApp(home: home),
       ),

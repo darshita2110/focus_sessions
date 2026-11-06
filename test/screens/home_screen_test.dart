@@ -3,10 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:focus_sessions/data/quote_repository.dart';
 import 'package:focus_sessions/data/session_repository.dart';
+import 'package:focus_sessions/models/quote.dart';
 import 'package:focus_sessions/models/session.dart';
 import 'package:focus_sessions/providers/core_providers.dart';
+import 'package:focus_sessions/providers/daily_quote_provider.dart';
 import 'package:focus_sessions/screens/home_screen.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Real repository on mock storage whose saves can be made to fail.
@@ -22,30 +27,46 @@ class _FailableSessionRepository extends SessionRepository {
   }
 }
 
+/// Keeps timer tests away from quote fetching, unless a test passes a client.
+class _StubDailyQuote extends DailyQuoteNotifier {
+  @override
+  Future<QuoteResult> build() async => const QuoteResult(
+        quote: Quote(text: 'Stub quote', author: 'Stub author'),
+        source: QuoteSource.fresh,
+      );
+}
+
 void main() {
   final start = DateTime.utc(2026, 11, 6, 10);
 
   late DateTime now;
   late StreamController<void> ticks;
+  late SharedPreferences prefs;
   late _FailableSessionRepository repository;
 
   setUp(() async {
     now = start;
     ticks = StreamController<void>.broadcast(sync: true);
     SharedPreferences.setMockInitialValues({});
-    repository =
-        _FailableSessionRepository(await SharedPreferences.getInstance());
+    prefs = await SharedPreferences.getInstance();
+    repository = _FailableSessionRepository(prefs);
   });
 
   tearDown(() => ticks.close());
 
-  Future<void> pumpHome(WidgetTester tester) {
+  Future<void> pumpHome(WidgetTester tester, {http.Client? quoteClient}) {
     return tester.pumpWidget(
       ProviderScope(
         overrides: [
           clockProvider.overrideWithValue(() => now),
           tickerProvider.overrideWithValue(() => ticks.stream),
           sessionRepositoryProvider.overrideWithValue(repository),
+          if (quoteClient == null)
+            dailyQuoteProvider.overrideWith(_StubDailyQuote.new)
+          else ...[
+            httpClientProvider.overrideWithValue(quoteClient),
+            sharedPreferencesProvider.overrideWithValue(prefs),
+          ],
         ],
         child: const MaterialApp(home: HomeScreen()),
       ),
@@ -171,6 +192,151 @@ void main() {
       expect(find.text('25 min'), findsOneWidget);
       final sessions = await repository.loadSessions();
       expect(sessions.single.note, 'Keep me');
+    });
+  });
+
+  group('daily quote', () {
+    const credit = 'Quotes from ZenQuotes';
+    const cachedNote =
+        'Could not fetch a new quote. Showing the last saved one.';
+    const fallbackNote = 'Could not fetch a quote. Showing a built-in one.';
+    const body = '[{"q":"Fetched quote","a":"Fetched author"}]';
+
+    http.Client okClient() =>
+        MockClient((_) async => http.Response(body, 200));
+    http.Client failingClient() =>
+        MockClient((_) async => http.Response('', 500));
+
+    testWidgets('shows a spinner until the quote arrives', (tester) async {
+      final response = Completer<http.Response>();
+
+      await pumpHome(
+        tester,
+        quoteClient: MockClient((_) => response.future),
+      );
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('Fetched quote'), findsNothing);
+
+      response.complete(http.Response(body, 200));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text('Fetched quote'), findsOneWidget);
+    });
+
+    testWidgets('shows a fetched quote and credit with no note',
+        (tester) async {
+      await pumpHome(tester, quoteClient: okClient());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fetched quote'), findsOneWidget);
+      expect(find.text('— Fetched author'), findsOneWidget);
+      expect(find.text(credit), findsOneWidget);
+      expect(find.text(cachedNote), findsNothing);
+      expect(find.text(fallbackNote), findsNothing);
+    });
+
+    testWidgets('shows the cached quote with a note when the fetch fails',
+        (tester) async {
+      await QuoteRepository(okClient(), prefs).fetchDailyQuote();
+
+      await pumpHome(tester, quoteClient: failingClient());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Fetched quote'), findsOneWidget);
+      expect(find.text(cachedNote), findsOneWidget);
+      expect(find.text(credit), findsOneWidget);
+    });
+
+    testWidgets('shows the built-in quote with a note when nothing is cached',
+        (tester) async {
+      await pumpHome(tester, quoteClient: failingClient());
+      await tester.pumpAndSettle();
+
+      expect(find.text(QuoteRepository.fallbackQuote.text), findsOneWidget);
+      expect(find.text(fallbackNote), findsOneWidget);
+    });
+
+    testWidgets('a request that never answers stops after the default timeout',
+        (tester) async {
+      await pumpHome(
+        tester,
+        quoteClient: MockClient((_) => Completer<http.Response>().future),
+      );
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.text(fallbackNote), findsOneWidget);
+    });
+
+    testWidgets('stays visible while running without fetching again',
+        (tester) async {
+      var requests = 0;
+      await pumpHome(
+        tester,
+        quoteClient: MockClient((_) async {
+          requests++;
+          return http.Response(body, 200);
+        }),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('25 min'));
+      await tester.pump();
+
+      expect(find.text('25:00'), findsOneWidget);
+      expect(find.text('Fetched quote'), findsOneWidget);
+      expect(find.text(credit), findsOneWidget);
+      expect(requests, 1);
+    });
+
+    testWidgets('is hidden on the note form', (tester) async {
+      await pumpHome(tester, quoteClient: okClient());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('25 min'));
+      await tester.pump();
+
+      await tester.tap(find.text('End Session'));
+      await tester.pump();
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.text('Fetched quote'), findsNothing);
+      expect(find.text(credit), findsNothing);
+    });
+
+    testWidgets('a very long quote does not overflow a small screen',
+        (tester) async {
+      tester.view
+        ..physicalSize = const Size(320, 480)
+        ..devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final longQuote = 'A long quote that keeps going. ' * 40;
+
+      await pumpHome(
+        tester,
+        quoteClient: MockClient(
+          (_) async => http.Response(
+            '[{"q":"$longQuote","a":"Author"}]',
+            200,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(longQuote), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('25 min'));
+      await tester.pump();
+
+      expect(find.text('25:00'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 }

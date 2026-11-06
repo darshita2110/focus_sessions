@@ -75,3 +75,14 @@
 - **What I did:** Accepted it and reversed my earlier decision not to test this path. The earlier fake failed before reaching SharedPreferences, so it could not expose the bug.
 - **Result:** flutter analyze: No issues found. flutter test: 91 tests passed. All 4 new retry tests failed with reload() removed.
 - **Commit:** Reload saved data after failed writes so retries work
+
+
+## 8. Daily quote
+- **Tool:** Claude Code for the code, Claude chat for review
+- **Asked:** Asked for a ZenQuotes daily quote with a timeout, a cached quote, a built-in fallback, loading and fallback states, the INTERNET permission, and MockClient tests.
+- **Claude produced:** A QuoteRepository, Quote model, provider, DailyQuote widget, and 51 tests. Before writing the parser, it checked the real API response and the ZenQuotes docs.
+- **What I did:** Accepted it. Claude Code temporarily broke five behaviors, and the tests caught each one. I accepted two additions beyond my prompt: decoding the response as UTF-8, and making Home scroll so a long quote cannot overflow.
+- **Claude caught my mistake:** My prompt asked for a plain-text credit, but ZenQuotes requires a link for free use. I fixed this in entry 9.
+- **Known limits:** The rate-limit response is undocumented, and an app left open overnight keeps yesterday's quote. I will list both in the README.
+- **Result:** flutter analyze: No issues found. flutter test: 142 tests passed. Device: Not run yet.
+- **Commit:** Add daily quote with cached and built-in fallbacks
