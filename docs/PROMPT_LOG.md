@@ -34,3 +34,16 @@
 - **Result:** flutter analyze: No issues found! (ran in 2.5s)
 . flutter test: All tests passed!.
 - **Commit:** Add SessionRepository so sessions survive app restarts
+
+
+## 4. Timer logic
+- **Tool:** Claude Code for the plan and code, Claude chat for review
+- **Asked:** Asked for a plan for the timer state, ticking, cleanup, clock changes, and test timing before any code was written.
+- **Claude produced:** A plan that saved sessions immediately and also stored the running session across app kills. After my changes, it built sealed timer states, a synchronous Notifier, injectable clock and ticker providers, and tests.
+- **What I did:** Rejected the first plan, then accepted the revised code with one cleanup. I accepted flutter_riverpod ^2.6.1 because it resolves with this project's Dart version.
+- **Pushbacks:**
+  - **Missing note step:** The plan saved a session as soon as it ended, but the assignment asks for a note first and Session is immutable. I required a TimerEnded state and saveNote, with tests for saving, double-taps, and failed saves.
+  - **Unneeded persistence:** The plan added ActiveSession, new repository methods, and restore logic for app kills. The assignment only requires finished sessions to survive a restart, so I removed them. A running session is lost if Android kills the app, and I will list that in the README.
+  - **Dead code:** The negative check in _clampDuration could never run because _tick finishes the session first, so I removed it.
+- **Result:** flutter analyze: No issues found! (ran in 4.3s). flutter test: All tests passed!.
+- **Commit:** Add focus timer logic with a note step before saving
