@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focus_sessions/models/focus_timer_state.dart';
 import 'package:focus_sessions/models/session.dart';
 import 'package:focus_sessions/providers/focus_timer_provider.dart';
+import 'package:focus_sessions/screens/history_screen.dart';
 
 /// Shows whichever step the timer is in.
 ///
@@ -16,7 +17,18 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(focusTimerProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Focus Sessions')),
+      appBar: AppBar(
+        title: const Text('Focus Sessions'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'History',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const HistoryScreen()),
+            ),
+          ),
+        ],
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),

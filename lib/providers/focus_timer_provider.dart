@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focus_sessions/models/focus_timer_state.dart';
 import 'package:focus_sessions/models/session.dart';
 import 'package:focus_sessions/providers/core_providers.dart';
+import 'package:focus_sessions/providers/session_history_provider.dart';
 
 /// Not autoDispose, so the timer keeps running while other screens are open.
 final focusTimerProvider =
@@ -69,6 +70,7 @@ class FocusTimerNotifier extends Notifier<FocusTimerState> {
             ),
           );
       state = const TimerIdle();
+      ref.invalidate(sessionHistoryProvider);
     } finally {
       _isSaving = false;
     }

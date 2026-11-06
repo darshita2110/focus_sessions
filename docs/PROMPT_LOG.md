@@ -7,17 +7,16 @@
 - **What I did:** Edited a few lines that were irrelevant
 - **Commit:** Set up Flutter project and Claude working rules
 
-## 2. Session model plan and review
-- **Tool:** Claude Code for the plan and code, Claude chat for reviewing the plan
-- **Asked:** Asked Claude Code to read CLAUDE.md and propose the Session model before writing code, including its fields, types, and reasons. I then asked Claude chat to review the plan.
-- **Claude produced:** A plan for an immutable Session model with JSON conversion, a derived actualDuration, UTC timestamps, and unit tests. It also asked whether to add an id and whether to use Duration or an enum.
-- **What I did:** Accepted the plan with these changes:
-  - Used a FocusLength enum instead of Duration, so the compiler enforces the three lengths and the home screen can build its buttons from the enum values.
-  - Did not add an id yet, because startTime is enough to identify a session in this single-user app.
-- **Pushback candidates:**
-  - **Invalid JSON values:** The plan covered missing fields and wrong types, but not invalid values like plannedMinutes: 20 or an end time before the start time. I asked for these to throw FormatException, with tests. [Confirmed by: test name or result]
-  - **UTC and local dates:** Using UTC dates directly could put sessions under the wrong day. For example, 2:00 AM IST on Nov 7 is 8:30 PM UTC on Nov 6. I added a doc comment and a CLAUDE.md rule to use toLocal() before showing or grouping dates. [Confirmed by: what you checked]
-- **Result:** flutter analyze: No issues found! (ran in 2.8s). flutter test: All tests passed!.
+## 2. Session model
+- **Tool:** Claude Code for the plan and code, Claude chat for review
+- **Asked:** Asked Claude Code to read CLAUDE.md and propose the Session model before writing code. I then asked Claude chat to review the plan and code.
+- **Claude produced:** An immutable Session model with JSON conversion, a derived actualDuration, UTC timestamps, and unit tests.
+- **What I did:** Accepted it with changes. I used a FocusLength enum, did not add an id, and kept toString for readable test failures.
+- **Pushbacks:**
+  - **Invalid JSON values:** The plan did not cover values like plannedMinutes: 30 or an end time before the start time. I asked for FormatException and tests.
+  - **Unneeded timestamp check:** I removed a check for timestamps with no offset, because toJson always includes Z.
+  - **UTC and local dates:** Using UTC dates directly could show sessions under the wrong day, so I added a doc comment and CLAUDE.md rule. This was confirmed in entry 6.
+- **Result:** flutter analyze: No issues found. flutter test: All tests passed.
 - **Commit:** Add Session model with strict JSON parsing to protect saved history
 
 
@@ -54,5 +53,16 @@
 - **Asked:** Asked Claude to connect the timer to a home screen with idle, running, and note states, without building History or the quote.
 - **Claude produced:** main.dart setup, a state-driven HomeScreen, rounded-up countdown seconds, and widget and unit tests.
 - **What I did:** Accepted it. I kept the catch-all error handling on Save, because the user sees a retry message instead of a crash, although this can hide the exact cause of a bug.
-- **Verified:** flutter analyze: No issues found! (ran in 4.4s). flutter test: All tests passed!. Emulator: [what you tested and what happened].
+- **Verified:** flutter analyze: No issues found! (ran in 4.4s). flutter test: All tests passed!. 
 - **Commit:** Connect timer to home screen so sessions can be run and saved
+
+
+## 6. History screen
+- **Tool:** Claude Code for the code, Claude chat for review
+- **Asked:** Asked for a History screen with loading, error, and empty states, swipe to delete, refresh after saving, and midnight date tests.
+- **Claude produced:** A history notifier, History screen, Home navigation, and tests. It added beforeRestore so a failed delete does not trigger Flutter's dismissed Dismissible error.
+- **What I did:** Accepted it. Claude Code temporarily broke four behaviors, and the tests caught each one. It also removed one of its own tests because the test did not check what its name claimed.
+- **UTC pushback confirmed:** Removing toLocal() made the just-after-midnight test fail on my IST machine.
+- **Bug found:** Claude Code reproduced a failed-write bug in SessionRepository. Claude chat had earlier advised skipping that test, and I reversed that decision in entry 7.
+- **Result:** flutter analyze: No issues found. flutter test: 87 tests passed. Device: Not run yet.
+- **Commit:** Add History screen with swipe to delete

@@ -7,6 +7,7 @@ import 'package:focus_sessions/models/focus_timer_state.dart';
 import 'package:focus_sessions/models/session.dart';
 import 'package:focus_sessions/providers/core_providers.dart';
 import 'package:focus_sessions/providers/focus_timer_provider.dart';
+import 'package:focus_sessions/providers/session_history_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Real repository on mock storage that counts saves, can fail, and can hold
@@ -241,6 +242,17 @@ void main() {
           note: 'Finished the draft',
         ),
       ]);
+    });
+
+    test('refreshes the history after a successful save', () async {
+      final container = startedContainer();
+      expect(await container.read(sessionHistoryProvider.future), isEmpty);
+      notifierOf(container).end();
+
+      await notifierOf(container).saveNote('Note');
+
+      final history = await container.read(sessionHistoryProvider.future);
+      expect(history.single.note, 'Note');
     });
 
     test('a double-tap saves only once', () async {
