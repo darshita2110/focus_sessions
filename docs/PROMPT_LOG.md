@@ -66,3 +66,12 @@
 - **Bug found:** Claude Code reproduced a failed-write bug in SessionRepository. Claude chat had earlier advised skipping that test, and I reversed that decision in entry 7.
 - **Result:** flutter analyze: No issues found. flutter test: 87 tests passed. Device: Not run yet.
 - **Commit:** Add History screen with swipe to delete
+
+
+## 7. Failed storage writes
+- **Tool:** Claude Code, with Claude chat for review
+- **Asked:** Asked Claude Code to fix the failed-write bug and test it with the real SharedPreferences class.
+- **Claude produced:** A reload after failed writes, plus retry tests using a failing store.
+- **What I did:** Accepted it and reversed my earlier decision not to test this path. The earlier fake failed before reaching SharedPreferences, so it could not expose the bug.
+- **Result:** flutter analyze: No issues found. flutter test: 91 tests passed. All 4 new retry tests failed with reload() removed.
+- **Commit:** Reload saved data after failed writes so retries work

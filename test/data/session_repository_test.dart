@@ -4,6 +4,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:focus_sessions/data/session_repository.dart';
 import 'package:focus_sessions/models/session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
+
+/// In-memory store whose writes can fail, used behind the real
+/// [SharedPreferences] so its cache behaves as it does in the app.
+class _FailingStore extends InMemorySharedPreferencesStore {
+  _FailingStore() : super.empty();
+
+  /// Runs in place of a write while set. Leave null for writes to succeed.
+  Future<bool> Function()? failure;
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) {
+    return failure?.call() ?? super.setValue(valueType, key, value);
+  }
+}
 
 void main() {
   const key = 'sessions';
@@ -146,4 +161,68 @@ void main() {
       expect(prefs.getStringList(key), ['not json']);
     });
   });
+
+  final diskError = Exception('Disk full');
+  final failureModes = {
+    'returns false': (
+      failure: () async => false,
+      reported: throwsException,
+    ),
+    'throws': (
+      failure: () async => throw diskError,
+      reported: throwsA(same(diskError)),
+    ),
+  };
+
+  for (final MapEntry(key: name, value: mode) in failureModes.entries) {
+    group('when setStringList $name', () {
+      late _FailingStore store;
+      late SessionRepository repository;
+
+      /// What is actually in the store, bypassing the SharedPreferences cache.
+      Future<Object?> onDisk() async => (await store.getAll())['flutter.$key'];
+
+      setUp(() async {
+        SharedPreferences.setMockInitialValues({});
+        store = _FailingStore();
+        SharedPreferencesStorePlatform.instance = store;
+        repository = SessionRepository(await SharedPreferences.getInstance());
+      });
+
+      test('a failed add is reported and a retry saves one session', () async {
+        store.failure = mode.failure;
+
+        await expectLater(repository.addSession(sessionAt(9)), mode.reported);
+
+        expect(await repository.loadSessions(), isEmpty);
+        expect(await onDisk(), isNull);
+
+        store.failure = null;
+        await repository.addSession(sessionAt(9));
+
+        expect(await onDisk(), [encode(sessionAt(9))]);
+        expect(await repository.loadSessions(), [sessionAt(9)]);
+      });
+
+      test('a failed delete keeps the session and a retry removes it',
+          () async {
+        await repository.addSession(sessionAt(9));
+        store.failure = mode.failure;
+
+        await expectLater(
+          repository.deleteSession(sessionAt(9).startTime),
+          mode.reported,
+        );
+
+        expect(await repository.loadSessions(), [sessionAt(9)]);
+        expect(await onDisk(), [encode(sessionAt(9))]);
+
+        store.failure = null;
+        await repository.deleteSession(sessionAt(9).startTime);
+
+        expect(await onDisk(), isEmpty);
+        expect(await repository.loadSessions(), isEmpty);
+      });
+    });
+  }
 }

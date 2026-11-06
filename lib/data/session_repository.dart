@@ -55,7 +55,14 @@ class SessionRepository {
   List<String> _readEntries() => _prefs.getStringList(_storageKey) ?? const [];
 
   Future<void> _write(List<String> entries) async {
-    final saved = await _prefs.setStringList(_storageKey, entries);
+    var saved = false;
+    try {
+      saved = await _prefs.setStringList(_storageKey, entries);
+    } finally {
+      // setStringList updates its in-memory cache before writing to disk, and
+      // a failed write does not undo that. Reload so later reads match disk.
+      if (!saved) await _prefs.reload();
+    }
     if (!saved) {
       throw Exception('Failed to save sessions');
     }
