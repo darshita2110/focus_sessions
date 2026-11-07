@@ -1,0 +1,7 @@
+# Reflection
+
+**Where Claude saved the most time:** Tests and edge cases. Claude wrote most of the 154 tests and then broke the code on purpose to check the tests could fail. That caught weak tests, including one for the ZenQuotes link that passed even with the error handling removed. It also found a real storage bug: SharedPreferences updates its cache before writing to disk, so after a failed save, a retry was rejected as a duplicate. I would not have found that by reading the code.
+
+**Where it cost me time:** Plans that were bigger than the task. The first timer plan saved the running session across app kills and skipped the required note step, so I rejected it and asked for a smaller design. I also accepted advice to skip testing failed writes, which is where that storage bug was hiding. The biggest cost was not running the app on a device until late. All tests passed, but the Android build failed with Java 21, and that only showed up on a real phone.
+
+**What I'd do differently:** Run the app on a real device as soon as the first screen exists, and after every feature. Tests showed the logic was right, but only a device build showed whether the app actually builds and runs. I would also ask Claude for its plan before code from the start, as I did for most steps. That made pushbacks easy, because I could change the design before any code existed.
