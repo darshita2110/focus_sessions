@@ -34,11 +34,13 @@ void main() {
 
   late DateTime now;
   late StreamController<void> ticks;
+  late int tickerStarts;
   late FakeSessionRepository repository;
 
   setUp(() async {
     now = start;
     ticks = StreamController<void>.broadcast(sync: true);
+    tickerStarts = 0;
     SharedPreferences.setMockInitialValues({});
     repository = FakeSessionRepository(await SharedPreferences.getInstance());
   });
@@ -49,7 +51,10 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         clockProvider.overrideWithValue(() => now),
-        tickerProvider.overrideWithValue(() => ticks.stream),
+        tickerProvider.overrideWithValue(() {
+          tickerStarts++;
+          return ticks.stream;
+        }),
         sessionRepositoryProvider.overrideWithValue(repository),
       ],
     );
@@ -87,30 +92,33 @@ void main() {
         TimerRunning(
           plannedLength: FocusLength.medium,
           startTime: start,
-          endTime: plannedEnd,
+          plannedEndTime: plannedEnd,
           remaining: const Duration(minutes: 25),
         ),
       );
       expect(ticks.hasListener, isTrue);
+      expect(tickerStarts, 1);
     });
 
-    test('throws StateError while running', () {
+    test('does nothing while running', () {
       final container = startedContainer();
+      final before = stateOf(container);
 
-      expect(
-        () => notifierOf(container).start(FocusLength.short),
-        throwsStateError,
-      );
+      notifierOf(container).start(FocusLength.short);
+
+      expect(stateOf(container), before);
+      expect(tickerStarts, 1);
     });
 
-    test('throws StateError while waiting for a note', () {
+    test('does nothing while waiting for a note', () {
       final container = startedContainer();
       notifierOf(container).end();
+      final before = stateOf(container);
 
-      expect(
-        () => notifierOf(container).start(FocusLength.short),
-        throwsStateError,
-      );
+      notifierOf(container).start(FocusLength.short);
+
+      expect(stateOf(container), before);
+      expect(tickerStarts, 1);
     });
   });
 
@@ -242,6 +250,15 @@ void main() {
           note: 'Finished the draft',
         ),
       ]);
+    });
+
+    test('saves a whitespace-only note as an empty string', () async {
+      final container = startedContainer();
+      notifierOf(container).end();
+
+      await notifierOf(container).saveNote('   \n\t ');
+
+      expect((await repository.loadSessions()).single.note, '');
     });
 
     test('refreshes the history after a successful save', () async {

@@ -46,7 +46,17 @@ class _SessionRow extends ConsumerWidget {
         // element, and Flutter would throw. Let the removal build first.
         beforeRestore: () => WidgetsBinding.instance.endOfFrame,
       );
-    } catch (_) {
+    } catch (error, stack) {
+      // Reported as well as shown, so a real bug is not hidden behind the
+      // SnackBar.
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'focus_sessions',
+          context: ErrorDescription('while deleting a session'),
+        ),
+      );
       messenger.showSnackBar(
         const SnackBar(content: Text('Could not delete the session.')),
       );

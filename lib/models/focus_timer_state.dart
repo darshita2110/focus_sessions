@@ -19,7 +19,7 @@ class TimerIdle extends FocusTimerState {
   String toString() => 'TimerIdle()';
 }
 
-/// A session is counting down to [endTime].
+/// A session is counting down to [plannedEndTime].
 ///
 /// [remaining] is recalculated from the clock on every tick; it is never
 /// decremented.
@@ -27,15 +27,16 @@ class TimerRunning extends FocusTimerState {
   const TimerRunning({
     required this.plannedLength,
     required this.startTime,
-    required this.endTime,
+    required this.plannedEndTime,
     required this.remaining,
   });
 
   final FocusLength plannedLength;
   final DateTime startTime;
 
-  /// The planned end: [startTime] plus [plannedLength].
-  final DateTime endTime;
+  /// The planned end: [startTime] plus [plannedLength]. Named apart from
+  /// [TimerEnded.endTime], which is when the session actually ended.
+  final DateTime plannedEndTime;
 
   final Duration remaining;
 
@@ -50,15 +51,17 @@ class TimerRunning extends FocusTimerState {
       other is TimerRunning &&
       other.plannedLength == plannedLength &&
       other.startTime == startTime &&
-      other.endTime == endTime &&
+      other.plannedEndTime == plannedEndTime &&
       other.remaining == remaining;
 
   @override
-  int get hashCode => Object.hash(plannedLength, startTime, endTime, remaining);
+  int get hashCode =>
+      Object.hash(plannedLength, startTime, plannedEndTime, remaining);
 
   @override
   String toString() => 'TimerRunning(plannedLength: $plannedLength, '
-      'startTime: $startTime, endTime: $endTime, remaining: $remaining)';
+      'startTime: $startTime, plannedEndTime: $plannedEndTime, '
+      'remaining: $remaining)';
 }
 
 /// A session has finished or was ended early and is waiting for a note

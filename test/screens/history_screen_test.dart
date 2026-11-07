@@ -240,6 +240,7 @@ void main() {
 
       await swipeAway(tester, 'Nov 5, 2026');
 
+      expect(tester.takeException(), isA<Exception>());
       expect(find.text('Could not delete the session.'), findsOneWidget);
       final tops = ['Nov 6, 2026', 'Nov 5, 2026', 'Nov 4, 2026']
           .map((date) => tester.getTopLeft(find.text(date)).dy)

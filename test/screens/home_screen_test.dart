@@ -179,6 +179,7 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pump();
 
+      expect(tester.takeException(), isA<Exception>());
       expect(
         find.text('Could not save the session. Try again.'),
         findsOneWidget,

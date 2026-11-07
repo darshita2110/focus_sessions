@@ -8,7 +8,7 @@ void main() {
     return TimerRunning(
       plannedLength: FocusLength.medium,
       startTime: start,
-      endTime: start.add(FocusLength.medium.duration),
+      plannedEndTime: start.add(FocusLength.medium.duration),
       remaining: remaining,
     );
   }

@@ -14,9 +14,9 @@ final focusTimerProvider =
 
 /// Runs one focus session at a time: idle → running → ended → idle.
 ///
-/// Remaining time is always `endTime - clock()`, clamped to between zero and
-/// the planned length, so a late tick, a backgrounded app or a clock change
-/// never leaves it wrong.
+/// Remaining time is always `plannedEndTime - clock()`, clamped to between
+/// zero and the planned length, so a late tick, a backgrounded app or a clock
+/// change never leaves it wrong.
 class FocusTimerNotifier extends Notifier<FocusTimerState> {
   StreamSubscription<void>? _ticks;
   bool _isSaving = false;
@@ -27,18 +27,15 @@ class FocusTimerNotifier extends Notifier<FocusTimerState> {
     return const TimerIdle();
   }
 
-  /// Starts a session of [length].
-  ///
-  /// Throws [StateError] unless the timer is idle.
+  /// Starts a session of [length]. Does nothing unless the timer is idle, so a
+  /// second tap cannot replace a running or ended session.
   void start(FocusLength length) {
-    if (state is! TimerIdle) {
-      throw StateError('A session is already in progress');
-    }
+    if (state is! TimerIdle) return;
     final now = _now();
     state = TimerRunning(
       plannedLength: length,
       startTime: now,
-      endTime: now.add(length.duration),
+      plannedEndTime: now.add(length.duration),
       remaining: length.duration,
     );
     _ticks = ref.read(tickerProvider)().listen((_) => _tick());
@@ -48,10 +45,13 @@ class FocusTimerNotifier extends Notifier<FocusTimerState> {
   void end() {
     final current = state;
     if (current is! TimerRunning) return;
-    _finish(current, _clampTime(_now(), current.startTime, current.endTime));
+    _finish(
+      current,
+      _clampTime(_now(), current.startTime, current.plannedEndTime),
+    );
   }
 
-  /// Saves the ended session with [note], then returns to idle.
+  /// Saves the ended session with [note], trimmed, then returns to idle.
   ///
   /// Does nothing if no session has ended or a save is already in progress.
   /// If saving fails, the error is rethrown and the state stays [TimerEnded]
@@ -66,7 +66,7 @@ class FocusTimerNotifier extends Notifier<FocusTimerState> {
               plannedLength: current.plannedLength,
               startTime: current.startTime,
               endTime: current.endTime,
-              note: note,
+              note: note.trim(),
             ),
           );
       state = const TimerIdle();
@@ -80,18 +80,18 @@ class FocusTimerNotifier extends Notifier<FocusTimerState> {
     final current = state;
     if (current is! TimerRunning) return;
     final now = _now();
-    if (!now.isBefore(current.endTime)) {
+    if (!now.isBefore(current.plannedEndTime)) {
       // Covers finishing while backgrounded: the session counts as ending at
       // its planned end, not when the app next ticked.
-      _finish(current, current.endTime);
+      _finish(current, current.plannedEndTime);
       return;
     }
     state = TimerRunning(
       plannedLength: current.plannedLength,
       startTime: current.startTime,
-      endTime: current.endTime,
+      plannedEndTime: current.plannedEndTime,
       remaining: _clampDuration(
-        current.endTime.difference(now),
+        current.plannedEndTime.difference(now),
         current.plannedLength.duration,
       ),
     );

@@ -125,7 +125,17 @@ class _NoteFormState extends ConsumerState<_NoteForm> {
   Future<void> _save() async {
     try {
       await ref.read(focusTimerProvider.notifier).saveNote(_controller.text);
-    } catch (_) {
+    } catch (error, stack) {
+      // Reported as well as shown, so a real bug is not hidden behind
+      // "Try again".
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'focus_sessions',
+          context: ErrorDescription('while saving a session'),
+        ),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Could not save the session. Try again.')),
