@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:focus_sessions/data/quote_repository.dart';
@@ -196,7 +197,8 @@ void main() {
   });
 
   group('daily quote', () {
-    const credit = 'Quotes from ZenQuotes';
+    const credit = 'Quotes provided by ZenQuotes API';
+    final creditLink = find.widgetWithText(TextButton, credit);
     const cachedNote =
         'Could not fetch a new quote. Showing the last saved one.';
     const fallbackNote = 'Could not fetch a quote. Showing a built-in one.';
@@ -233,7 +235,7 @@ void main() {
 
       expect(find.text('Fetched quote'), findsOneWidget);
       expect(find.text('— Fetched author'), findsOneWidget);
-      expect(find.text(credit), findsOneWidget);
+      expect(creditLink, findsOneWidget);
       expect(find.text(cachedNote), findsNothing);
       expect(find.text(fallbackNote), findsNothing);
     });
@@ -247,7 +249,7 @@ void main() {
 
       expect(find.text('Fetched quote'), findsOneWidget);
       expect(find.text(cachedNote), findsOneWidget);
-      expect(find.text(credit), findsOneWidget);
+      expect(creditLink, findsOneWidget);
     });
 
     testWidgets('shows the built-in quote with a note when nothing is cached',
@@ -257,6 +259,30 @@ void main() {
 
       expect(find.text(QuoteRepository.fallbackQuote.text), findsOneWidget);
       expect(find.text(fallbackNote), findsOneWidget);
+      expect(find.text(credit), findsNothing);
+    });
+
+    // Makes the launcher's platform call fail. This covers the failure path
+    // only, not opening a browser.
+    testWidgets('tapping the credit does nothing if the link cannot open',
+        (tester) async {
+      var launchAttempts = 0;
+      final messenger = tester.binding.defaultBinaryMessenger;
+      const channel = MethodChannel('plugins.flutter.io/url_launcher');
+      messenger.setMockMethodCallHandler(channel, (_) async {
+        launchAttempts++;
+        throw PlatformException(code: 'cannot_open');
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+      await pumpHome(tester, quoteClient: okClient());
+      await tester.pumpAndSettle();
+
+      await tester.tap(creditLink);
+      await tester.pumpAndSettle();
+
+      expect(launchAttempts, 1);
+      expect(tester.takeException(), isNull);
+      expect(find.text('Fetched quote'), findsOneWidget);
     });
 
     testWidgets('a request that never answers stops after the default timeout',

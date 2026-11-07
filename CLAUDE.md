@@ -58,6 +58,7 @@ docs/PROMPT_LOG.md          Record of work done with Claude
 - `shared_preferences`
 - `http`
 - `intl`
+- `url_launcher`
 - `shared_preferences_platform_interface` (test-only dev dependency, for a failing store; do not import it from `lib/`)
 
 ## Do not

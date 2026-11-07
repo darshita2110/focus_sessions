@@ -85,4 +85,14 @@
 - **Claude caught my mistake:** My prompt asked for a plain-text credit, but ZenQuotes requires a link for free use. I fixed this in entry 9.
 - **Known limits:** The rate-limit response is undocumented, and an app left open overnight keeps yesterday's quote. I will list both in the README.
 - **Result:** flutter analyze: No issues found. flutter test: 142 tests passed. Device: Not run yet.
+- **Build fix (separate commit):** flutter run on my phone failed because AGP 8.1.0 does not work with Android Studio's Java 21. Claude Code upgraded AGP to 8.2.1 and Gradle to 8.5. Verified on my phone (RMX5111). Commit: Upgrade Android build tools so the app builds with Java 21
 - **Commit:** Add daily quote with cached and built-in fallbacks
+
+
+## 9. ZenQuotes attribution
+- **Tool:** Claude Code, with Claude chat for review
+- **Asked:** Asked for a tappable ZenQuotes link and for the credit to be hidden under the built-in quote.
+- **Claude produced:** [one-line summary of what it built]
+- **What I did:** Accepted it. Showing the ZenQuotes credit under the built-in quote was wrong, because that quote is not from ZenQuotes.
+- **Result:** flutter analyze: No issues found. flutter test: 143 tests passed. Debug APK builds. Phone: Worked.
+- **Commit:** Link to ZenQuotes as its free tier requires

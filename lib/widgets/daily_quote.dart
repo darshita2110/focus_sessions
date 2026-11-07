@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:focus_sessions/models/quote.dart';
 import 'package:focus_sessions/providers/daily_quote_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Shows today's quote, with a note if it is not a freshly fetched one.
 class DailyQuote extends ConsumerWidget {
@@ -53,8 +54,11 @@ class _QuoteText extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
-        const SizedBox(height: 8),
-        Text('Quotes from ZenQuotes', style: textTheme.labelSmall),
+        // The built-in quote is not from ZenQuotes, so it gets no credit.
+        if (result.source != QuoteSource.fallback) ...[
+          const SizedBox(height: 8),
+          const _ZenQuotesCredit(),
+        ],
       ],
     );
   }
@@ -67,5 +71,33 @@ class _QuoteText extends StatelessWidget {
       QuoteSource.fallback =>
         'Could not fetch a quote. Showing a built-in one.',
     };
+  }
+}
+
+/// The attribution link ZenQuotes requires on its free tier.
+class _ZenQuotesCredit extends StatelessWidget {
+  const _ZenQuotesCredit();
+
+  static final _url = Uri.parse('https://zenquotes.io/');
+
+  /// launchUrl reports failure by returning false or throwing. Either way the
+  /// user just stays in the app, so both are ignored.
+  Future<void> _open() async {
+    try {
+      await launchUrl(_url, mode: LaunchMode.externalApplication);
+    } on Exception {
+      return;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton(
+      style: TextButton.styleFrom(
+        textStyle: Theme.of(context).textTheme.labelSmall,
+      ),
+      onPressed: _open,
+      child: const Text('Quotes provided by ZenQuotes API'),
+    );
   }
 }
